@@ -42,7 +42,7 @@ import static android.R.attr.id;
 public class MainActivity extends AppCompatActivity {
     private ListView mListView;
     private EditText mEditText;
-
+    private List<String> lines;
     // Used to load the 'native-lib' library on application startup.
     static {
         System.loadLibrary("native-lib");
@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        lines = new ArrayList<String>();
         displayLinesList();
 //
 //        Thread t = new Thread(new Runnable() {
@@ -77,7 +77,10 @@ public class MainActivity extends AppCompatActivity {
         mEditText = (EditText) findViewById(R.id.editText);
         mListView.setTextFilterEnabled(true);
         final Context context = this;
+        ArrayAdapter adapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, lines);
+//        adapter.notifyDataSetChanged(); // waits for the list to be populated
 
+        mListView.setAdapter(adapter);
 
     }
 
@@ -91,15 +94,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void displayLinesList() {
-        final ApiInterface api = getAPI();
-        List<Line> lines = new ArrayList<Line>();
-        final List<String> lineNames = new ArrayList<String>();
-
         new AsyncTask<Object, Object, Object>() {
             @Override
-            protected Object doInBackground(Object[] objects) {
+            protected List<Line> doInBackground(Object[] objects) {
                 try {
-                    return api.getLines().execute().body();
+                    return getAPI().getLines().execute().body();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -109,6 +108,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected void onPostExecute(Object o) {
                 super.onPostExecute(o);
+                for (Line l : ( List<Line>)o) {
+                    System.out.println(l.getCode() + " - " + l.getName());
+                    lines.add(l.getCode() + " - " + l.getName());
+                }
             }
         }.execute();
     }
