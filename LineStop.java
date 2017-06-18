@@ -5,8 +5,20 @@ package com.example.ine5424.smartufsc;
  */
 
 public class LineStop {
-    public int order;
-    public int stop;
-    public int line;
+    private int order;
+    private int stop;
+    private int line;
+
+    public int getOrder() {
+        return order;
+    }
+
+    public int getStop() {
+        return stop;
+    }
+
+    public int getLine() {
+        return line;
+    }
 
 }

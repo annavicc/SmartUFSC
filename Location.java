@@ -7,7 +7,20 @@ import com.google.android.gms.maps.model.LatLng;
  */
 
 public class Location {
-    public String type;
-    public double [] coordinates;
+    private String type;
+    private double[] coordinates;
+
+    public Location(String t, double[] c) {
+        type = t;
+        coordinates = c;
+    }
+
+    public String getType() {
+        return this.type;
+    }
+
+    public LatLng getCoordinates() {
+        return new LatLng(coordinates[1], coordinates[0]);
+    }
 
 }
