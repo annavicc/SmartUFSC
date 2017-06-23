@@ -15,8 +15,17 @@ import retrofit2.http.POST;
 
 public class PassengerStops {
 
+    private int id;
     private int bus;
     private int busstop;
+
+    public PassengerStops() {
+
+    }
+
+    public int getRequestId() {
+        return this.id;
+    }
 
     public int getBusId() {
         return this.bus;
@@ -35,12 +44,13 @@ public class PassengerStops {
         }
     }
 
-//    public  void deletePassengerStop(int bus, int busstop) {
-//        try {
-//            MainActivity.getAPI().deletePassengerStop(bus, busstop).execute().body();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
+    public  void deletePassengerStop(int requestId) {
+        ApiInterface api = MainActivity.getAPI();
+        try {
+            api.deletePassengerStop(requestId).execute().body();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 }

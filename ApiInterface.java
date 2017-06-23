@@ -2,6 +2,10 @@ package com.example.ine5424.smartufsc;
 
 import java.util.List;
 
+import javax.xml.transform.Result;
+
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.DELETE;
 import retrofit2.http.Field;
@@ -28,19 +32,18 @@ public interface ApiInterface {
     @GET("api/busstops/{id}")
     Call<Stop> getStop(@Path("id") int id);
 
-    @GET("api/buses/")
-    Call<List<BusLine>> getBuses();
-
     @GET("api/buses/{id}")
-    Call<List<BusLine>> getBusesById(@Path("id") int id);
+    Call<Bus> getBus(@Path("id") int id);
 
     @POST("api/passengerstops/")
     @FormUrlEncoded
-    Call<POST> savePassengerStop(@Field("bus") int bus,
-                                 @Field("busstop") int busstop);
+    Call<PassengerStops> savePassengerStop(@Field("bus") int bus,
+                                   @Field("busstop") int busstop);
 
-//    @DELETE("api/passengerstops/{busstop}")
-//    Call<DELETE> deletePassengerStop(int bus,
-//                                     @Path("busstop") int busstop);
+    @DELETE("api/passengerstops/{id}/")
+    Call<ResponseBody> deletePassengerStop(@Path("id") int id);
+
+
+
 }
 

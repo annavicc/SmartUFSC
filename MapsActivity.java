@@ -1,15 +1,19 @@
 package com.example.ine5424.smartufsc;
 
-import android.annotation.TargetApi;
+
 import android.graphics.Color;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
+import android.os.SystemClock;
+import android.support.annotation.MainThread;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.ArrayAdapter;
+import android.util.Log;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Interpolator;
 
 import com.example.latlnginterpolation.LatLngInterpolator;
 import com.example.latlnginterpolation.MarkerAnimation;
@@ -22,28 +26,30 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import org.json.JSONException;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
+import io.paperdb.Paper;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.http.DELETE;
-import retrofit2.http.POST;
 
 public class MapsActivity extends FragmentActivity implements
         OnMapReadyCallback,
         GoogleMap.OnInfoWindowClickListener {
 
     private GoogleMap mMap;
+    private Timer timer;
     private static final String STOP_REQUEST = "Solicitar parada neste ponto!";
     private static final String CANCEL_REQUEST = "Cancelar solicitação de parada.";
     LocationManager locationManager;
@@ -158,7 +164,30 @@ public class MapsActivity extends FragmentActivity implements
 
         CameraUpdate yourLocation = CameraUpdateFactory.newLatLngZoom(coordinate, 11);
         mMap.animateCamera(yourLocation);
-        moveMarker();
+//        moveMarker();
+        updateBusLocation();
+    }
+
+    public void updateBusLocation() {
+        MainActivity.getAPI().getBus(1).enqueue(new Callback<Bus>() {
+            @Override
+            public void onResponse(Call<Bus> call, Response<Bus> response) {
+                int id = response.body().getId();
+                LatLng location = response.body().getLocation();
+                moveBus(id, location.latitude, location.longitude);
+            }
+
+            @Override
+            public void onFailure(Call<Bus> call, Throwable t) {
+                System.out.println(t.toString());
+            }
+        }
+        );
+    }
+
+    public void moveBus(int id, final double lat, final double lng) {
+        
+
     }
 
     public void drawRoute() {
@@ -195,46 +224,55 @@ public class MapsActivity extends FragmentActivity implements
     public void onInfoWindowClick(Marker marker) {
         int busId = 1;
         int stopId = (Integer)marker.getTag();
-        if (stopRequested) {
+        if (!stopRequested) {
             marker.setSnippet(CANCEL_REQUEST);
             sendStopRequest(busId, stopId);
+            stopRequested = true;
         } else {
             marker.setSnippet(STOP_REQUEST);
-//            deletePassengerStop(busId, stopId);
+            deletePassengerStop(Integer.parseInt((Paper.book().read("requestId").toString())));
+            stopRequested = false;
         }
-        stopRequested = !stopRequested;
+
         marker.showInfoWindow();
     }
 
-    public void sendStopRequest(int busId, int stopId) {
-        System.out.println(busId + " " + stopId);
-        MainActivity.getAPI().savePassengerStop(busId, stopId).enqueue(new Callback<POST>() {
-            @Override
-            public void onResponse(Call<POST> call, Response<POST> response) {
+    public void sendStopRequest(final int busId, final int stopId) {
 
+        MainActivity.getAPI().savePassengerStop(busId, stopId).enqueue(new Callback<PassengerStops>() {
+            @Override
+
+            public void onResponse(Call<PassengerStops> call, Response<PassengerStops> response) {
+                Paper.book().write("busId", busId);
+                Paper.book().write("stopId", stopId);
+                Paper.book().write("requestId", response.body().getRequestId());
             }
 
             @Override
-            public void onFailure(Call<POST> call, Throwable t) {
-
+            public void onFailure(Call<PassengerStops> call, Throwable t) {
+                System.out.println(t.toString());
             }
         });
     }
 
 
-//    public void deletePassengerStop(int bus, int busstop) {
-//        MainActivity.getAPI().deletePassengerStop(bus, busstop).enqueue(new Callback<DELETE>() {
-//            @Override
-//            public void onResponse(Call<DELETE> call, Response<DELETE> response) {
-//
-//            }
-//
-//            @Override
-//            public void onFailure(Call<DELETE> call, Throwable t) {
-//
-//            }
-//        });
-//    }
+    public void deletePassengerStop(int requestId) {
+        MainActivity.getAPI().deletePassengerStop(requestId).enqueue(new Callback<ResponseBody>() {
+
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                Paper.book().delete("requestId");
+                Paper.book().delete("busId");
+                Paper.book().delete("stopId");
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                System.out.println(t.toString());
+
+            }
+        });
+    }
 
 
 }

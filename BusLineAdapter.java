@@ -18,6 +18,7 @@ public class BusLineAdapter extends ArrayAdapter<BusLine> {
     private LayoutInflater mInflater;
     private ArrayList<BusLine> mDataSource;
 
+
     public BusLineAdapter(Context context, ArrayList<BusLine> items) {
         super(context, R.layout.activity_main, items);
         mContext = context;

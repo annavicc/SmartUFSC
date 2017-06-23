@@ -10,6 +10,7 @@ public class Location {
     private String type;
     private double[] coordinates;
 
+    public Location() { }
     public Location(String t, double[] c) {
         type = t;
         coordinates = c;

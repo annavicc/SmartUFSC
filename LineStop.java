@@ -9,6 +9,10 @@ public class LineStop {
     private int stop;
     private int line;
 
+    public LineStop() {
+
+    }
+
     public int getOrder() {
         return order;
     }
