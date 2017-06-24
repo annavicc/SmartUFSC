@@ -3,6 +3,8 @@ package com.example.ine5424.smartufsc;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -16,6 +18,10 @@ import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import io.paperdb.Paper;
 import retrofit2.Retrofit;
@@ -26,6 +32,17 @@ public class MainActivity extends AppCompatActivity {
     private ListView mListView;
     private EditText mEditText;
     private ApiInterface api = getAPI();
+    private Timer timer;
+    private TimerTask timerTask = new TimerTask() {
+
+        @Override
+        public void run() {
+            if (MapsActivity.isPopulated()) {
+//                System.out.println("aqui");
+                    MapsActivity.moveBuses();
+            }
+        }
+    };
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -40,7 +57,23 @@ public class MainActivity extends AppCompatActivity {
         Paper.init(context);
         displayLinesList();
         manipulateView();
+        start();
     }
+
+    public void start() {
+        if(timer != null) {
+            return;
+        }
+        timer = new Timer();
+        timer.scheduleAtFixedRate(timerTask, 0, 2000);
+
+    }
+
+    public void stop() {
+        timer.cancel();
+        timer = null;
+    }
+
 
     public static ApiInterface getAPI() {
         Gson gson = new GsonBuilder().create();

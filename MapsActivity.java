@@ -6,14 +6,13 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.support.annotation.MainThread;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.Interpolator;
+
 
 import com.example.latlnginterpolation.LatLngInterpolator;
 import com.example.latlnginterpolation.MarkerAnimation;
@@ -30,11 +29,15 @@ import com.google.android.gms.maps.model.PolylineOptions;
 
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import io.paperdb.Paper;
@@ -49,12 +52,13 @@ public class MapsActivity extends FragmentActivity implements
         GoogleMap.OnInfoWindowClickListener {
 
     private GoogleMap mMap;
-    private Timer timer;
     private static final String STOP_REQUEST = "Solicitar parada neste ponto!";
     private static final String CANCEL_REQUEST = "Cancelar solicitação de parada.";
     LocationManager locationManager;
     private boolean stopRequested;
     private List<Marker> stops;
+    private static List<Marker> busesMarkers = new ArrayList<Marker>();
+    private Timer timer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +70,7 @@ public class MapsActivity extends FragmentActivity implements
         mapFragment.getMapAsync(this);
         stopRequested = false;
         stops = new ArrayList<Marker>();
+
     }
 
     /**
@@ -90,6 +95,7 @@ public class MapsActivity extends FragmentActivity implements
         int lineCode = this.getIntent().getExtras().getInt("lineCode");
         getLineStops(lineCode);
 
+
     }
 
     public void getLineStops(final int lineCode) {
@@ -97,8 +103,9 @@ public class MapsActivity extends FragmentActivity implements
             @Override
             protected Object doInBackground(Object... params) {
                 try {
-                    return (BusLine) MainActivity.getAPI().getLineById(lineCode)
+                    BusLine line = (BusLine) MainActivity.getAPI().getLineById(lineCode)
                             .execute().body();
+                    return line;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -106,9 +113,14 @@ public class MapsActivity extends FragmentActivity implements
             }
 
             protected void onPostExecute(Object o) {
-                ArrayList<Integer> idLineStop = ((BusLine)o).getLineStops();
+                BusLine line = (BusLine)o;
+                ArrayList<Integer> idLineStop = line.getLineStops();
+                ArrayList<Integer> busesId = line.getBuses();
                 for (Integer i : idLineStop) {
                     getBusStops(i);
+                }
+                for (Integer i : busesId) {
+                    getBuses(i);
                 }
 
             }
@@ -132,6 +144,36 @@ public class MapsActivity extends FragmentActivity implements
                 getStop(line, ((LineStop) o).getStop());
             }
         }.execute();
+    }
+
+    public void getBuses(final int busId) {
+        new AsyncTask<Object, Object, Object>() {
+            @Override
+            protected Object doInBackground(Object... params) {
+                try {
+                    return (Bus)MainActivity.getAPI().getBus(busId).execute().body();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+
+            protected void onPostExecute(Object o) {
+                Bus bus = (Bus)o;
+                putBusOnMap(bus.getLocation(), bus.getId());
+            }
+        }.execute();
+    }
+
+    public void putBusOnMap(final LatLng loc, final int id) {
+        Marker m = mMap.addMarker(new MarkerOptions().position(loc).title(String.valueOf(id)).
+                icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+        m.setTag("bus");
+        busesMarkers.add(m);
+    }
+
+    public static boolean isPopulated() {
+        return !busesMarkers.isEmpty();
     }
 
     public void getStop(final LineStop lineStop, final int stop) {
@@ -164,30 +206,48 @@ public class MapsActivity extends FragmentActivity implements
 
         CameraUpdate yourLocation = CameraUpdateFactory.newLatLngZoom(coordinate, 11);
         mMap.animateCamera(yourLocation);
-//        moveMarker();
-        updateBusLocation();
+
+
+//        updateBusLocation();
+    }
+    private static final ScheduledExecutorService worker =
+            Executors.newSingleThreadScheduledExecutor();
+
+    public static void moveBuses() {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                for (Marker marker : busesMarkers) {
+                    updateBusesLocation(marker);
+                }
+
+            }
+        });
+//        new AsyncTask<Object, Object, Object>() {
+//            @Override
+//            protected Object doInBackground(Object... params) {
+//                for (Marker marker : busesMarkers) {
+//                    updateBusesLocation(marker);
+//                }
+//                return null;
+//            }
+//        }.execute();
     }
 
-    public void updateBusLocation() {
-        MainActivity.getAPI().getBus(1).enqueue(new Callback<Bus>() {
+    public static void updateBusesLocation(final Marker m) {
+        final int busId = Integer.parseInt(m.getTitle());
+        MainActivity.getAPI().getBus(busId).enqueue(new Callback<Bus>() {
             @Override
             public void onResponse(Call<Bus> call, Response<Bus> response) {
-                int id = response.body().getId();
                 LatLng location = response.body().getLocation();
-                moveBus(id, location.latitude, location.longitude);
+                m.setPosition(location);
             }
 
             @Override
             public void onFailure(Call<Bus> call, Throwable t) {
                 System.out.println(t.toString());
             }
-        }
-        );
-    }
-
-    public void moveBus(int id, final double lat, final double lng) {
-        
-
+        });
     }
 
     public void drawRoute() {
@@ -198,7 +258,7 @@ public class MapsActivity extends FragmentActivity implements
         mMap.addPolyline(path);
     }
 
-    public void moveMarker() {
+    public Marker moveMarker(int id, double lat, double lng, double i) {
         LatLng origin, dest;
         LatLngInterpolator interpolator = new LatLngInterpolator.Spherical();
         Marker marker = null;
@@ -212,17 +272,25 @@ public class MapsActivity extends FragmentActivity implements
 //
 //        }
 
-        LatLng l1 = stops.get(0).getPosition();
-        LatLng l2 = stops.get(stops.size()-1).getPosition();
-        LatLngInterpolator l = new LatLngInterpolator.LinearFixed();
-        Marker m1 = mMap.addMarker(new MarkerOptions().position(l1).title("Bus moving").
+
+//        LatLng l1 = stops.get(0).getPosition();
+//        LatLng l2 = stops.get(stops.size()-1).getPosition();
+        LatLngInterpolator l = new LatLngInterpolator.Spherical();
+        Marker m1 = mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lng)).title("Bus moving").
                 icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-        MarkerAnimation.animateMarkerToGB(m1, l2, l);
+        MarkerAnimation.animateMarkerToGB(m1, new LatLng(lat+i, lng+ i), l);
+//        m1.setPosition();
+        return m1;
+
     }
 
     @Override
     public void onInfoWindowClick(Marker marker) {
-        int busId = 1;
+        if (marker.getTag().toString().equalsIgnoreCase("bus")) {
+            moveBuses();
+            return;
+        }
+        int busId = Integer.parseInt(marker.getId());
         int stopId = (Integer)marker.getTag();
         if (!stopRequested) {
             marker.setSnippet(CANCEL_REQUEST);
