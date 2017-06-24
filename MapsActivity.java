@@ -1,6 +1,8 @@
 package com.example.ine5424.smartufsc;
 
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.LocationManager;
 import android.os.AsyncTask;
@@ -21,6 +23,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -28,6 +31,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.sql.SQLOutput;
@@ -47,6 +51,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.http.DELETE;
 
+import static com.example.ine5424.smartufsc.R.drawable.ic_directions_bus;
+
 public class MapsActivity extends FragmentActivity implements
         OnMapReadyCallback,
         GoogleMap.OnInfoWindowClickListener {
@@ -59,6 +65,7 @@ public class MapsActivity extends FragmentActivity implements
     private List<Marker> stops;
     private static List<Marker> busesMarkers = new ArrayList<Marker>();
     private Timer timer;
+    private int stopRequestId = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -166,6 +173,7 @@ public class MapsActivity extends FragmentActivity implements
     }
 
     public void putBusOnMap(final LatLng loc, final int id) {
+
         Marker m = mMap.addMarker(new MarkerOptions().position(loc).title(String.valueOf(id)).
                 icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
         m.setTag("bus");
@@ -290,14 +298,19 @@ public class MapsActivity extends FragmentActivity implements
             moveBuses();
             return;
         }
-        int busId = Integer.parseInt(marker.getId());
+        int busId = 1; // qual onibus
         int stopId = (Integer)marker.getTag();
+        if (stopId != stopRequestId  && stopRequestId != -1) {
+            return;
+        }
         if (!stopRequested) {
             marker.setSnippet(CANCEL_REQUEST);
             sendStopRequest(busId, stopId);
             stopRequested = true;
+            stopRequestId = stopId;
         } else {
             marker.setSnippet(STOP_REQUEST);
+            stopRequestId = -1;
             deletePassengerStop(Integer.parseInt((Paper.book().read("requestId").toString())));
             stopRequested = false;
         }
