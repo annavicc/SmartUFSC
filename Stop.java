@@ -7,18 +7,28 @@ import com.google.android.gms.maps.model.LatLng;
  */
 
 public class Stop {
-    private String name;
-    private Location location;
+    private String name; // stop name
+    private Location location; // stop location
 
     public Stop() { }
+
+    /**
+     * @return the stop name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * @return the stop location
+     */
     public Location getLocation() {
         return location;
     }
 
+    /**
+     * @return coordinates of the stop
+     */
     public LatLng getCoordinates() {
         return location.getCoordinates();
     }

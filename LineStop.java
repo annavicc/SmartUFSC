@@ -5,22 +5,31 @@ package com.example.ine5424.smartufsc;
  */
 
 public class LineStop {
-    private int order;
-    private int stop;
-    private int line;
+    private int order; // the order of that stop within the line context
+    private int stop; // stop id
+    private int line; // line id
 
     public LineStop() {
 
     }
 
+    /**
+     * @return the order of the stop for the line
+     */
     public int getOrder() {
         return order;
     }
 
+    /**
+     * @return the stop id
+     */
     public int getStop() {
         return stop;
     }
 
+    /**
+     * @return the line id
+     */
     public int getLine() {
         return line;
     }

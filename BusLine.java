@@ -1,6 +1,5 @@
 package com.example.ine5424.smartufsc;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 /**
@@ -8,10 +7,10 @@ import java.util.ArrayList;
  */
 
 public class BusLine {
-    private int id;
-    private String name;
-    private ArrayList<Integer> linestops;
-    private ArrayList<Integer> buses;
+    private int id; // id of the bus line
+    private String name; // name of the bus line
+    private ArrayList<Integer> linestops; // list with line stops
+    private ArrayList<Integer> buses; // list of buses that operates for this line
 
     public BusLine() {
 
@@ -24,26 +23,30 @@ public class BusLine {
         buses = new ArrayList<Integer>();
     }
 
-    public void setCode(int c) {
-        this.id = c;
-    }
-
-    public void setName(String n) {
-        this.name = n;
-    }
-
+    /**
+     * @return the code of the bus line
+     */
     public int getCode() {
         return this.id;
     }
 
+    /**
+     * @return the bus line name
+     */
     public String getName() {
         return this.name;
     }
 
+    /**
+     * @return a list with all stops for this line
+     */
     public ArrayList<Integer> getLineStops() {
         return this.linestops;
     }
 
+    /**
+     * @return a list with all buses that operate for this line
+     */
     public ArrayList<Integer> getBuses() {
         return this.buses;
     }

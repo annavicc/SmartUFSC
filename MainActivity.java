@@ -3,8 +3,6 @@ package com.example.ine5424.smartufsc;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -20,8 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import io.paperdb.Paper;
 import retrofit2.Retrofit;
@@ -33,12 +29,12 @@ public class MainActivity extends AppCompatActivity {
     private EditText mEditText;
     private ApiInterface api = getAPI();
     private Timer timer;
+    /* Initiates the timer to get information from the server periodically */
     private TimerTask timerTask = new TimerTask() {
 
         @Override
         public void run() {
             if (MapsActivity.isPopulated()) {
-//                System.out.println("aqui");
                     MapsActivity.moveBuses();
             }
         }
@@ -55,11 +51,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         final Context context = this;
         Paper.init(context);
-        displayLinesList();
+        displayLinesList(); // display list with bus lines
         manipulateView();
-        start();
+        start(); // start the itmer
     }
 
+    /* Start the timer */
     public void start() {
         if(timer != null) {
             return;
@@ -69,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /* Stop the timer */
     public void stop() {
         timer.cancel();
         timer = null;
@@ -78,13 +76,13 @@ public class MainActivity extends AppCompatActivity {
     public static ApiInterface getAPI() {
         Gson gson = new GsonBuilder().create();
         Retrofit r = new Retrofit.Builder()
-                .baseUrl("http://10.0.2.2:8000/")
+                .baseUrl("http://192.168.43.184:8000/")
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
         return r.create(ApiInterface.class);
     }
 
-
+    /* Retrieve bus lines from the server and display them */
     public void displayLinesList() {
         new AsyncTask<Object, Object, Object>() {
             @Override
@@ -109,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
         }.execute();
     }
 
+    /* Filter lines as user types */
     public void filterLines(final ArrayList<BusLine> lines) {
         mEditText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -141,6 +140,7 @@ public class MainActivity extends AppCompatActivity {
         mListView.setFilterText(mEditText.getText().toString());
     }
 
+    /* Opens map based on the selected bus line */
     public void manipulateView() {
         mListView = (ListView) findViewById(R.id.bus_list_view);
         mEditText = (EditText) findViewById(R.id.editText);

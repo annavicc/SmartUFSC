@@ -20,6 +20,7 @@ import retrofit2.http.Path;
 
 public interface ApiInterface {
 
+
     @GET("api/lines/")
     Call<List<BusLine>> getLines();
 

@@ -1,57 +1,36 @@
 package com.example.ine5424.smartufsc;
 
-
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.location.LocationManager;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
-import android.support.annotation.MainThread;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 
 
-import com.example.latlnginterpolation.LatLngInterpolator;
-import com.example.latlnginterpolation.MarkerAnimation;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.PolylineOptions;
 
 
-import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.Executors;
-import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import io.paperdb.Paper;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import retrofit2.http.DELETE;
 
-import static com.example.ine5424.smartufsc.R.drawable.ic_directions_bus;
 
 public class MapsActivity extends FragmentActivity implements
         OnMapReadyCallback,
@@ -60,12 +39,11 @@ public class MapsActivity extends FragmentActivity implements
     private GoogleMap mMap;
     private static final String STOP_REQUEST = "Solicitar parada neste ponto!";
     private static final String CANCEL_REQUEST = "Cancelar solicitação de parada.";
-    LocationManager locationManager;
-    private boolean stopRequested;
-    private List<Marker> stops;
-    private static List<Marker> busesMarkers = new ArrayList<Marker>();
+    private boolean stopRequested; // informs if a passenger made a request to stop
+    private List<Marker> stops; // bus stops for the selected line
+    private static List<Marker> busesMarkers = new ArrayList<Marker>(); // buses operating on the selected line
     private Timer timer;
-    private int stopRequestId = -1;
+    private int stopRequestId = -1; // stop request for the passenger
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,7 +55,6 @@ public class MapsActivity extends FragmentActivity implements
         mapFragment.getMapAsync(this);
         stopRequested = false;
         stops = new ArrayList<Marker>();
-
     }
 
     /**
@@ -89,7 +66,6 @@ public class MapsActivity extends FragmentActivity implements
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
@@ -105,6 +81,10 @@ public class MapsActivity extends FragmentActivity implements
 
     }
 
+    /**
+     * Get all line stops that are part of the selected line
+     * @param lineCode the bus line code
+     */
     public void getLineStops(final int lineCode) {
         new AsyncTask<Object, Object, Object>() {
             @Override
@@ -134,6 +114,10 @@ public class MapsActivity extends FragmentActivity implements
         }.execute();
     }
 
+    /**
+     * Get the bus stop for a given line
+     * @param lineStop the bus line stop
+     */
     public void getBusStops(final int lineStop) {
         new AsyncTask<Object, Object, Object>() {
             @Override
@@ -153,6 +137,10 @@ public class MapsActivity extends FragmentActivity implements
         }.execute();
     }
 
+    /**
+     * Get a bus by id to put it on the map
+     * @param busId the bus id
+     */
     public void getBuses(final int busId) {
         new AsyncTask<Object, Object, Object>() {
             @Override
@@ -172,6 +160,11 @@ public class MapsActivity extends FragmentActivity implements
         }.execute();
     }
 
+    /**
+     * Puts a bus on the map
+     * @param loc the current location the bus is at
+     * @param id the bus id
+     */
     public void putBusOnMap(final LatLng loc, final int id) {
 
         Marker m = mMap.addMarker(new MarkerOptions().position(loc).title(String.valueOf(id)).
@@ -180,6 +173,9 @@ public class MapsActivity extends FragmentActivity implements
         busesMarkers.add(m);
     }
 
+    /**
+     * @return true if there are buses operating for the selected bus line
+     */
     public static boolean isPopulated() {
         return !busesMarkers.isEmpty();
     }
@@ -202,6 +198,11 @@ public class MapsActivity extends FragmentActivity implements
         }.execute();
     }
 
+    /**
+     * Puts bus stops on the map
+     * @param stop the object stop
+     * @param id the id of the stop
+     */
     public void putStopsonMap(Stop stop, int id) {
         LatLng coordinate = stop.getCoordinates();
         String stopName = stop.getName();
@@ -210,17 +211,14 @@ public class MapsActivity extends FragmentActivity implements
         m.setSnippet(STOP_REQUEST);
         m.setTag((Integer)id);
         stops.add(m);
-        drawRoute();
 
         CameraUpdate yourLocation = CameraUpdateFactory.newLatLngZoom(coordinate, 11);
         mMap.animateCamera(yourLocation);
-
-
-//        updateBusLocation();
     }
-    private static final ScheduledExecutorService worker =
-            Executors.newSingleThreadScheduledExecutor();
 
+    /**
+     * Move buses on the map
+     */
     public static void moveBuses() {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
@@ -228,27 +226,23 @@ public class MapsActivity extends FragmentActivity implements
                 for (Marker marker : busesMarkers) {
                     updateBusesLocation(marker);
                 }
-
             }
         });
-//        new AsyncTask<Object, Object, Object>() {
-//            @Override
-//            protected Object doInBackground(Object... params) {
-//                for (Marker marker : busesMarkers) {
-//                    updateBusesLocation(marker);
-//                }
-//                return null;
-//            }
-//        }.execute();
     }
 
+    /**
+     * Updates the bus location on the map
+     * @param m the marker that represents the bus to be updated
+     */
     public static void updateBusesLocation(final Marker m) {
         final int busId = Integer.parseInt(m.getTitle());
         MainActivity.getAPI().getBus(busId).enqueue(new Callback<Bus>() {
             @Override
             public void onResponse(Call<Bus> call, Response<Bus> response) {
                 LatLng location = response.body().getLocation();
+                String lastUpdate = response.body().getLastUpdate();
                 m.setPosition(location);
+                m.setSnippet("Última atualização: " + lastUpdate);
             }
 
             @Override
@@ -258,47 +252,18 @@ public class MapsActivity extends FragmentActivity implements
         });
     }
 
-    public void drawRoute() {
-        PolylineOptions path = new PolylineOptions().width(4).color(Color.BLUE);
-        for (int i = 0; i < stops.size(); i++) {
-            path.add(stops.get(i).getPosition());
-        }
-        mMap.addPolyline(path);
-    }
 
-    public Marker moveMarker(int id, double lat, double lng, double i) {
-        LatLng origin, dest;
-        LatLngInterpolator interpolator = new LatLngInterpolator.Spherical();
-        Marker marker = null;
-//        for (int i = 0 ; i < stops.size()-1; i++) {
-//            origin = stops.get(i).getPosition();
-//
-//            dest = stops.get(i+1).getPosition();
-//            marker = mMap.addMarker(new MarkerOptions().position(origin).title("Bus moving").
-//                    icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-//            MarkerAnimation.animateMarkerToGB(marker, dest, interpolator);
-//
-//        }
-
-
-//        LatLng l1 = stops.get(0).getPosition();
-//        LatLng l2 = stops.get(stops.size()-1).getPosition();
-        LatLngInterpolator l = new LatLngInterpolator.Spherical();
-        Marker m1 = mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lng)).title("Bus moving").
-                icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-        MarkerAnimation.animateMarkerToGB(m1, new LatLng(lat+i, lng+ i), l);
-//        m1.setPosition();
-        return m1;
-
-    }
-
+    /**
+     * Handle a stop request made by a passenger
+     * @param marker the stop that belongs to the request
+     */
     @Override
     public void onInfoWindowClick(Marker marker) {
         if (marker.getTag().toString().equalsIgnoreCase("bus")) {
             moveBuses();
             return;
         }
-        int busId = 1; // qual onibus
+        int busId = 27; // qual onibus
         int stopId = (Integer)marker.getTag();
         if (stopId != stopRequestId  && stopRequestId != -1) {
             return;
@@ -318,11 +283,14 @@ public class MapsActivity extends FragmentActivity implements
         marker.showInfoWindow();
     }
 
+    /**
+     * Send stop request to the server
+     * @param busId the bus id
+     * @param stopId the stop id
+     */
     public void sendStopRequest(final int busId, final int stopId) {
-
         MainActivity.getAPI().savePassengerStop(busId, stopId).enqueue(new Callback<PassengerStops>() {
             @Override
-
             public void onResponse(Call<PassengerStops> call, Response<PassengerStops> response) {
                 Paper.book().write("busId", busId);
                 Paper.book().write("stopId", stopId);
@@ -337,6 +305,10 @@ public class MapsActivity extends FragmentActivity implements
     }
 
 
+    /**
+     * Handles when a passenger cancels a stop request
+     * @param requestId the id of the request made
+     */
     public void deletePassengerStop(int requestId) {
         MainActivity.getAPI().deletePassengerStop(requestId).enqueue(new Callback<ResponseBody>() {
 
@@ -354,6 +326,5 @@ public class MapsActivity extends FragmentActivity implements
             }
         });
     }
-
 
 }
